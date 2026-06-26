@@ -51,8 +51,10 @@ jobs:
           cd $GITHUB_WORKSPACE/retroarch-src
           export OS=Emscripten
           emconfigure ./configure --prefix=/usr \
+            --enable-gles --disable-x11 \
             --disable-cg --disable-cheats --disable-ffmpeg --disable-vulkan --disable-kms \
-            --disable-udev --disable-alsa --disable-oss --disable-v4l2 --disable-pipewire
+            --disable-udev --disable-alsa --disable-oss --disable-v4l2 --disable-pipewire \
+            --disable-parport --disable-floppy
           emmake make -j$(nproc)
 
       # 7. 编译四大内核
