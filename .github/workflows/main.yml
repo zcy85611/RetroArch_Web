@@ -49,8 +49,7 @@ jobs:
         run: |
           source emsdk/emsdk_env.sh
           cd $GITHUB_WORKSPACE/retroarch-src
-          chmod +x libretro-build-emscripten.sh
-          ./libretro-build-emscripten.sh
+          emmake make -f Makefile.emscripten -j$(nproc)
 
       # 7. 编译四大内核
       - name: Build Cores to WASM
@@ -73,20 +72,19 @@ jobs:
           cd $GITHUB_WORKSPACE/cores-src/mgba
           emmake make -f Makefile.libretro platform=emscripten -j$(nproc)
 
-      # 8. 整合所有编译产物，构建最终的网页发布包
       - name: Prepare Artifact Directory
         run: |
           mkdir -p dist/cores
           mkdir -p dist/assets
           
-          # 动态搜索主程序成果（这次链接器启动后就能百分之百捞到了）
-          find retroarch-src/ -name "*retroarch*.js" -exec cp {} dist/retroarch.js \;
-          find retroarch-src/ -name "*retroarch*.wasm" -exec cp {} dist/retroarch.wasm \;
+          # 动态搜索主程序成果并移动到 dist 根目录
+          find retroarch-src/ -maxdepth 1 -name "*retroarch*.js" -exec cp {} dist/retroarch.js \;
+          find retroarch-src/ -maxdepth 1 -name "*retroarch*.wasm" -exec cp {} dist/retroarch.wasm \;
           
           # 复制网页入口
           find retroarch-src/ -name "index.html" -exec cp {} dist/index.html \;
           
-          # 聚集内核
+          # 聚集四大核心内核
           find cores-src/fceumm/ -name "fceumm_libretro_emscripten.*" -exec cp {} dist/cores/ \;
           find cores-src/snes9x/libretro/ -name "snes9x_libretro_emscripten.*" -exec cp {} dist/cores/ \;
           find cores-src/genesis/ -name "genesis_plus_gx_libretro_emscripten.*" -exec cp {} dist/cores/ \;
