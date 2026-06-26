@@ -49,6 +49,7 @@ jobs:
         run: |
           source emsdk/emsdk_env.sh
           cd $GITHUB_WORKSPACE/retroarch-src
+          export OS=Emscripten
           emconfigure ./configure --prefix=/usr \
             --disable-cg --disable-cheats --disable-ffmpeg --disable-vulkan --disable-kms \
             --disable-udev --disable-alsa --disable-oss --disable-v4l2 --disable-pipewire
