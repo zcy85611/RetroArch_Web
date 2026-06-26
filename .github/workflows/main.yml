@@ -78,20 +78,20 @@ jobs:
           mkdir -p dist/cores
           mkdir -p dist/assets
           
-          # 复制 Griffin 编译出来的最新前端主程序
-          cp retroarch-src/retroarch.js dist/ || cp retroarch-src/pkg/emscripten/retroarch.js dist/
-          cp retroarch-src/retroarch.wasm dist/ || cp retroarch-src/pkg/emscripten/retroarch.wasm dist/
+          # 1. 动态搜索主程序成果并强行捞回（不限制路径和可能的前缀/后缀变动）
+          find retroarch-src/ -name "*retroarch*.js" -exec cp {} dist/retroarch.js \;
+          find retroarch-src/ -name "*retroarch*.wasm" -exec cp {} dist/retroarch.wasm \;
           
-          # 官方静态页入口通常在 pkg/emscripten/index.html
-          cp retroarch-src/pkg/emscripten/index.html dist/
+          # 2. 复制静态网页入口
+          find retroarch-src/ -name "index.html" -exec cp {} dist/index.html \;
           
-          # 聚集编译出的内核文件
+          # 3. 聚集编译出的内核文件
           find cores-src/fceumm/ -name "fceumm_libretro_emscripten.*" -exec cp {} dist/cores/ \;
           find cores-src/snes9x/libretro/ -name "snes9x_libretro_emscripten.*" -exec cp {} dist/cores/ \;
           find cores-src/genesis/ -name "genesis_plus_gx_libretro_emscripten.*" -exec cp {} dist/cores/ \;
           find cores-src/mgba/ -name "mgba_libretro_emscripten.*" -exec cp {} dist/cores/ \;
           
-          # 复制全套 Assets 资源
+          # 4. 复制全套 Assets 资源
           cp -r assets-src/* dist/assets/
 
       # 9. 上传到 GitHub Actions Artifacts
