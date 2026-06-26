@@ -49,7 +49,7 @@ jobs:
         run: |
           source emsdk/emsdk_env.sh
           cd $GITHUB_WORKSPACE/retroarch-src
-          emconfigure ./configure --prefix=/usr --disable-cg --disable-chdr --disable-cheats --disable-ffmpeg --disable-vulkan --disable-kms
+          emconfigure ./configure --prefix=/usr --disable-cg --disable-cheats --disable-ffmpeg --disable-vulkan --disable-kms
           emmake make -j$(nproc)
 
       # 7. 编译四大内核
