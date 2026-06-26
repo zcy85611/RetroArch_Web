@@ -50,12 +50,7 @@ jobs:
           source emsdk/emsdk_env.sh
           cd $GITHUB_WORKSPACE/retroarch-src
           export OS=Emscripten
-          emconfigure ./configure --prefix=/usr \
-            --enable-gles --disable-x11 \
-            --disable-cg --disable-cheats --disable-ffmpeg --disable-vulkan --disable-kms \
-            --disable-udev --disable-alsa --disable-oss --disable-v4l2 --disable-pipewire \
-            --disable-parport --disable-floppy
-          emmake make -j$(nproc)
+          emmake make -f Makefile.griffin platform=emscripten -j$(nproc)
 
       # 7. 编译四大内核
       - name: Build Cores to WASM
@@ -78,18 +73,19 @@ jobs:
           cd $GITHUB_WORKSPACE/cores-src/mgba
           emmake make -f Makefile.libretro platform=emscripten -j$(nproc)
 
-      # 8. 整合所有编译产物，构建最终的网页发布包
       - name: Prepare Artifact Directory
         run: |
           mkdir -p dist/cores
           mkdir -p dist/assets
           
-          # 复制前端主程序
-          cp retroarch-src/pkg/emscripten/index.html dist/
-          cp retroarch-src/pkg/emscripten/retroarch.js dist/
-          cp retroarch-src/pkg/emscripten/retroarch.wasm dist/
+          # 复制 Griffin 编译出来的最新前端主程序
+          cp retroarch-src/retroarch.js dist/ || cp retroarch-src/pkg/emscripten/retroarch.js dist/
+          cp retroarch-src/retroarch.wasm dist/ || cp retroarch-src/pkg/emscripten/retroarch.wasm dist/
           
-          # 聚集编译出的内核文件（自动兼容 .bc 或 .wasm 格式）
+          # 官方静态页入口通常在 pkg/emscripten/index.html
+          cp retroarch-src/pkg/emscripten/index.html dist/
+          
+          # 聚集编译出的内核文件
           find cores-src/fceumm/ -name "fceumm_libretro_emscripten.*" -exec cp {} dist/cores/ \;
           find cores-src/snes9x/libretro/ -name "snes9x_libretro_emscripten.*" -exec cp {} dist/cores/ \;
           find cores-src/genesis/ -name "genesis_plus_gx_libretro_emscripten.*" -exec cp {} dist/cores/ \;
