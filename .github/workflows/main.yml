@@ -48,8 +48,8 @@ jobs:
       - name: Build Web Frontend
         run: |
           source emsdk/emsdk_env.sh
-          cd $GITHUB_WORKSPACE/retroarch-src/pkg/emscripten
-          emmake make platform=emscripten -j$(nproc)
+          cd $GITHUB_WORKSPACE/retroarch-src
+          emmake make -f Makefile.griffin platform=emscripten retroarch.html -j$(nproc)
 
       # 7. 编译四大内核
       - name: Build Cores to WASM
@@ -72,16 +72,17 @@ jobs:
           cd $GITHUB_WORKSPACE/cores-src/mgba
           emmake make -f Makefile.libretro platform=emscripten -j$(nproc)
 
+      # 8. 整合所有编译产物，构建最终的网页发布包
       - name: Prepare Artifact Directory
         run: |
           mkdir -p dist/cores
           mkdir -p dist/assets
           
-          # 动态搜索主程序成果（这次编译成功后就能捞到了）
+          # 动态搜索主程序成果（这次链接器启动后就能百分之百捞到了）
           find retroarch-src/ -name "*retroarch*.js" -exec cp {} dist/retroarch.js \;
           find retroarch-src/ -name "*retroarch*.wasm" -exec cp {} dist/retroarch.wasm \;
           
-          # 复制静态网页入口
+          # 复制网页入口
           find retroarch-src/ -name "index.html" -exec cp {} dist/index.html \;
           
           # 聚集内核
