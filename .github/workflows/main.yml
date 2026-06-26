@@ -12,7 +12,7 @@ jobs:
       - name: Install Build Dependencies
         run: |
           sudo apt update
-          sudo apt install -y build-essential git WebP
+          sudo apt install -y build-essential git webp
 
       # 2. 安装并配置 Emscripten SDK (WASM 编译器)
       - name: Setup Emscripten SDK
