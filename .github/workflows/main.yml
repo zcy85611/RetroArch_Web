@@ -49,6 +49,7 @@ jobs:
         run: |
           source emsdk/emsdk_env.sh
           cd retroarch-src/pkg/emscripten
+          emconfigure ./configure --prefix=/usr --enable-emscripten --disable-cg --disable-chdr --disable-cheats
           emmake make -j$(nproc)
 
       # 7. 编译四大内核
