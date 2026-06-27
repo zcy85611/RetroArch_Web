@@ -51,30 +51,45 @@ jobs:
           cd $GITHUB_WORKSPACE/retroarch-src
           emmake make -f Makefile.emscripten HAVE_STATIC_DUMMY=1 -j$(nproc)
 
-      # 7. 编译四大内核
+      # 7. 编译四大内核并打包为 WASM
       - name: Build Cores to WASM
         run: |
           source emsdk/emsdk_env.sh
           
-          echo "=== 编译 FC (FCEUmm) ==="
+          # 创建一个统一的输出目录，用来存放编译好的内核文件
+          mkdir -p $GITHUB_WORKSPACE/dist/cores
+          
+          # 统一的 Emscripten 打包参数
+          # -s WASM=1: 强制生成 .wasm 文件
+          # -s FORCE_FILESYSTEM=1: 锁死自带的虚拟文件系统，方便 BrowserFS 挂载
+          # -s EXPORTED_RUNTIME_METHODS: 导出 FS 文件系统方法，允许你在外部操控路径
+          EMCC_FLAGS="-s WASM=1 -s FORCE_FILESYSTEM=1 -s EXIT_RUNTIME=0 -s EXPORTED_RUNTIME_METHODS=['FS','cwrap','ccall'] -O3"
+
+          echo "=== 编译 & 封装 FC (FCEUmm) ==="
           cd $GITHUB_WORKSPACE/cores-src/fceumm
           emmake make -f Makefile.libretro platform=emscripten -j$(nproc)
+          # 将生成的 .bc 转换为目标目录下的 js/wasm
+          emcc fceumm_libretro_emscripten.bc -o $GITHUB_WORKSPACE/dist/cores/fceumm.js $EMCC_FLAGS
           
-          echo "=== 编译 SFC (Snes9x) ==="
+          echo "=== 编译 & 封装 SFC (Snes9x) ==="
           cd $GITHUB_WORKSPACE/cores-src/snes9x/libretro
           emmake make platform=emscripten -j$(nproc)
+          emcc snes9x_libretro_emscripten.bc -o $GITHUB_WORKSPACE/dist/cores/snes9x.js $EMCC_FLAGS
           
-          echo "=== 编译 MD (Genesis Plus GX) ==="
+          echo "=== 编译 & 封装 MD (Genesis Plus GX) ==="
           cd $GITHUB_WORKSPACE/cores-src/genesis
           emmake make -f Makefile.libretro platform=emscripten -j$(nproc)
+          emcc genesis_plus_gx_libretro_emscripten.bc -o $GITHUB_WORKSPACE/dist/cores/genesis.js $EMCC_FLAGS
           
-          echo "=== 编译 GBA (mGBA) ==="
+          echo "=== 编译 & 封装 GBA (mGBA) ==="
           cd $GITHUB_WORKSPACE/cores-src/mgba
           emmake make -f Makefile.libretro platform=emscripten -j$(nproc)
+          emcc mgba_libretro_emscripten.bc -o $GITHUB_WORKSPACE/dist/cores/mgba.js $EMCC_FLAGS
+
+          echo "=== 编译完成！所有内核已放入 dist/cores 目录 ==="
 
       - name: Prepare Artifact Directory
         run: |
-          mkdir -p dist/cores
           mkdir -p dist/assets
           
           # 1. 核心修正：直接去你搜出来的 libretro 壳目录，把配套的 index.html、css 和外壳 js 一个不漏全带走
@@ -89,9 +104,6 @@ jobs:
           # 动态匹配你可能编译出的配套 .wasm 文件（有些配置下可能包含 worker.js，通配符最稳）
           cp retroarch-src/retroarch.wasm dist/ 2>/dev/null || true
           cp retroarch-src/*.wasm dist/ 2>/dev/null || true
-          
-          # 3. 聚集四个内核
-          find cores-src/ -name "*_libretro_emscripten.*" -exec cp {} dist/cores/ \;
           
           # 4. 拷贝最新的 Assets 资源文件夹（如果你的工作流有涉及）
           # if [ -d "assets-src" ]; then cp -r assets-src/* dist/assets/ 2>/dev/null || true; fi
