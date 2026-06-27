@@ -56,19 +56,16 @@ jobs:
         run: |
           source emsdk/emsdk_env.sh
           
-          # 创建一个统一的输出目录，用来存放编译好的内核文件
+          # 创建统一输出目录
           mkdir -p $GITHUB_WORKSPACE/dist/cores
           
-          # 统一的 Emscripten 打包参数
-          # -s WASM=1: 强制生成 .wasm 文件
-          # -s FORCE_FILESYSTEM=1: 锁死自带的虚拟文件系统，方便 BrowserFS 挂载
-          # -s EXPORTED_RUNTIME_METHODS: 导出 FS 文件系统方法，允许你在外部操控路径
-          EMCC_FLAGS="-s WASM=1 -s FORCE_FILESYSTEM=1 -s EXIT_RUNTIME=0 -s EXPORTED_RUNTIME_METHODS=['FS','cwrap','ccall'] -O3"
+          # 修正后的编译与打包参数
+          # 核心是增加了 -x assembler，用来让 emcc 正确识别和解包 Libretro 伪装成 .bc 的静态库
+          EMCC_FLAGS="-x assembler -s WASM=1 -s FORCE_FILESYSTEM=1 -s EXIT_RUNTIME=0 -s EXPORTED_RUNTIME_METHODS=['FS','cwrap','ccall'] -O3"
 
           echo "=== 编译 & 封装 FC (FCEUmm) ==="
           cd $GITHUB_WORKSPACE/cores-src/fceumm
           emmake make -f Makefile.libretro platform=emscripten -j$(nproc)
-          # 将生成的 .bc 转换为目标目录下的 js/wasm
           emcc fceumm_libretro_emscripten.bc -o $GITHUB_WORKSPACE/dist/cores/fceumm.js $EMCC_FLAGS
           
           echo "=== 编译 & 封装 SFC (Snes9x) ==="
