@@ -72,6 +72,20 @@ jobs:
           cd $GITHUB_WORKSPACE/cores-src/mgba
           emmake make -f Makefile.libretro platform=emscripten -j$(nproc)
 
+      - name: Locate Real File Paths
+        run: |
+          echo "=== 正在全盘搜索 HTML 文件 ==="
+          find retroarch-src/ -name "*.html"
+          
+          echo "=== 正在全盘搜索 CSS 文件 ==="
+          find retroarch-src/ -name "*.css"
+          
+          echo "=== 正在全盘搜索编译出的 JS 文件 ==="
+          find retroarch-src/ -name "*.js"
+          
+          # 故意抛出一个错误中断工作流，方便我们停下来看上面的日志
+          exit 1
+
       - name: Prepare Artifact Directory
         run: |
           mkdir -p dist/cores
