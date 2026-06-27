@@ -78,10 +78,10 @@ jobs:
           mkdir -p dist/assets
           
           # 动态搜索主程序成果并移动到 dist 根目录
-          cp retroarch-src/index.html dist/ 2>/dev/null || true
           cp retroarch-src/*.js dist/
           cp retroarch-src/*.wasm dist/
-          cp retroarch-src/*.css dist/ 2>/dev/null || true
+          cp retroarch-src/pkg/emscripten/*.html dist/
+          cp retroarch-src/pkg/emscripten/*.css dist/ 2>/dev/null || true
           
           # 聚集四大核心内核
           mkdir -p dist/cores
