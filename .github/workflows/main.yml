@@ -78,13 +78,10 @@ jobs:
           mkdir -p dist/assets
           
           # 动态搜索主程序成果并移动到 dist 根目录
-          find retroarch-src/ -maxdepth 1 -name "*retroarch*.js" -exec cp {} dist/retroarch.js \;
-          find retroarch-src/ -maxdepth 1 -name "*retroarch*.wasm" -exec cp {} dist/retroarch.wasm \;
-          
-          cp retroarch-src/*.html dist/ 2>/dev/null || true
-          cp retroarch-src/*.js dist/ 2>/dev/null || true
-          cp retroarch-src/*.wasm dist/ 2>/dev/null || true
-          cp retroarch-src/*.css dist/ 2>/dev/null || true
+          cp retroarch-src/pkg/emscripten/index.html dist/
+          cp retroarch-src/pkg/emscripten/retroarch.css dist/
+          cp retroarch-src/retroarch.js dist/
+          cp retroarch-src/retroarch.wasm dist/
 
           cp retroarch-src/pkg/emscripten/libretro/libretro.js dist/ 2>/dev/null || true
           cp retroarch-src/pkg/emscripten/libretro/libretro.css dist/ 2>/dev/null || true
@@ -95,7 +92,7 @@ jobs:
           find cores-src/ -name "*_libretro_emscripten.*" -exec cp {} dist/cores/ \;
           
           # 复制全套 Assets 资源
-          if [ -d "assets-src" ]; then cp -r assets-src/* dist/assets/ 2>/dev/null || true; fi
+          # if [ -d "assets-src" ]; then cp -r assets-src/* dist/assets/ 2>/dev/null || true; fi
 
       - name: Compress Artifacts to tar.gz
         run: |
