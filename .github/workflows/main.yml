@@ -81,17 +81,17 @@ jobs:
           find retroarch-src/ -maxdepth 1 -name "*retroarch*.js" -exec cp {} dist/retroarch.js \;
           find retroarch-src/ -maxdepth 1 -name "*retroarch*.wasm" -exec cp {} dist/retroarch.wasm \;
           
-          # 复制网页入口
-          find retroarch-src/ -name "index.html" -exec cp {} dist/index.html \;
+          cp retroarch-src/*.html dist/ 2>/dev/null || true
+          cp retroarch-src/*.js dist/ 2>/dev/null || true
+          cp retroarch-src/*.wasm dist/ 2>/dev/null || true
+          cp retroarch-src/*.css dist/ 2>/dev/null || true
           
           # 聚集四大核心内核
-          find cores-src/fceumm/ -name "fceumm_libretro_emscripten.*" -exec cp {} dist/cores/ \;
-          find cores-src/snes9x/libretro/ -name "snes9x_libretro_emscripten.*" -exec cp {} dist/cores/ \;
-          find cores-src/genesis/ -name "genesis_plus_gx_libretro_emscripten.*" -exec cp {} dist/cores/ \;
-          find cores-src/mgba/ -name "mgba_libretro_emscripten.*" -exec cp {} dist/cores/ \;
+          mkdir -p dist/cores
+          find cores-src/ -name "*_libretro_emscripten.*" -exec cp {} dist/cores/ \;
           
           # 复制全套 Assets 资源
-          cp -r assets-src/* dist/assets/
+          if [ -d "assets-src" ]; then cp -r assets-src/* dist/assets/ 2>/dev/null || true; fi
 
       - name: Compress Artifacts to tar.gz
         run: |
