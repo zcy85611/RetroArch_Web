@@ -85,6 +85,10 @@ jobs:
           cp retroarch-src/*.js dist/ 2>/dev/null || true
           cp retroarch-src/*.wasm dist/ 2>/dev/null || true
           cp retroarch-src/*.css dist/ 2>/dev/null || true
+
+          cp retroarch-src/pkg/emscripten/libretro/libretro.js dist/ 2>/dev/null || true
+          cp retroarch-src/pkg/emscripten/libretro/libretro.css dist/ 2>/dev/null || true
+          cp retroarch-src/pkg/emscripten/libretro/core_list.js dist/ 2>/dev/null || true
           
           # 聚集四大核心内核
           mkdir -p dist/cores
