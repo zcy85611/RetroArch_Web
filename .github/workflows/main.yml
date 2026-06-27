@@ -72,36 +72,28 @@ jobs:
           cd $GITHUB_WORKSPACE/cores-src/mgba
           emmake make -f Makefile.libretro platform=emscripten -j$(nproc)
 
-      - name: Locate Real File Paths
-        run: |
-          echo "=== 正在全盘搜索 HTML 文件 ==="
-          find retroarch-src/ -name "*.html"
-          
-          echo "=== 正在全盘搜索 CSS 文件 ==="
-          find retroarch-src/ -name "*.css"
-          
-          echo "=== 正在全盘搜索编译出的 JS 文件 ==="
-          find retroarch-src/ -name "*.js"
-          
-          # 故意抛出一个错误中断工作流，方便我们停下来看上面的日志
-          exit 1
-
       - name: Prepare Artifact Directory
         run: |
           mkdir -p dist/cores
           mkdir -p dist/assets
           
-          # 动态搜索主程序成果并移动到 dist 根目录
-          cp retroarch-src/*.js dist/
-          cp retroarch-src/*.wasm dist/
-          cp retroarch-src/pkg/emscripten/*.html dist/
-          cp retroarch-src/pkg/emscripten/*.css dist/ 2>/dev/null || true
+          # 1. 核心修正：直接去你搜出来的 libretro 壳目录，把配套的 index.html、css 和外壳 js 一个不漏全带走
+          cp retroarch-src/pkg/emscripten/libretro/index.html dist/
+          cp retroarch-src/pkg/emscripten/libretro/libretro.css dist/
+          cp retroarch-src/pkg/emscripten/libretro/libretro.js dist/
+          cp retroarch-src/pkg/emscripten/libretro/core_list.js dist/
+          cp retroarch-src/pkg/emscripten/libretro/browserfs.min.js dist/
           
-          # 聚集四大核心内核
-          mkdir -p dist/cores
+          # 2. 复制你根目录下热乎编译出来的核心本体
+          cp retroarch-src/retroarch.js dist/
+          # 动态匹配你可能编译出的配套 .wasm 文件（有些配置下可能包含 worker.js，通配符最稳）
+          cp retroarch-src/retroarch.wasm dist/ 2>/dev/null || true
+          cp retroarch-src/*.wasm dist/ 2>/dev/null || true
+          
+          # 3. 聚集四个内核
           find cores-src/ -name "*_libretro_emscripten.*" -exec cp {} dist/cores/ \;
           
-          # 复制全套 Assets 资源
+          # 4. 拷贝最新的 Assets 资源文件夹（如果你的工作流有涉及）
           # if [ -d "assets-src" ]; then cp -r assets-src/* dist/assets/ 2>/dev/null || true; fi
 
       - name: Compress Artifacts to tar.gz
