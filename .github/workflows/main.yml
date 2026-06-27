@@ -93,9 +93,14 @@ jobs:
           # 复制全套 Assets 资源
           cp -r assets-src/* dist/assets/
 
-      # 9. 上传到 GitHub Actions Artifacts
-      - name: Upload Web Player Package
+      - name: Compress Artifacts to tar.gz
+        run: |
+          # -C dist . 表示切换到 dist 目录下再打包，这样解压时就不会包含多余的 dist 外层文件夹
+          tar -czvf retroarch-web-player.tar.gz -C dist .
+
+      - name: Upload Streamlined Tarball
         uses: actions/upload-artifact@v4
         with:
-          name: RetroArch-Web-Player
-          path: dist/
+          name: RetroArch-Web-Player-tarball
+          path: retroarch-web-player.tar.gz
+          if-no-files-found: error
