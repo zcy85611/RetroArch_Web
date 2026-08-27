@@ -40,53 +40,38 @@ jobs:
           git clone --depth 1 https://github.com/libretro/snes9x.git snes9x
           git clone --depth 1 https://github.com/libretro/vbam-libretro.git vbam
 
-      # 5. 编译内核并打包为 JS/WASM
+# 5. 编译内核并打包为 JS/WASM
       - name: Build Cores to WASM
         run: |
-          # 统一的 Emscripten 封装 Flag
           EMCC_FLAGS="-s WASM=1 -s FORCE_FILESYSTEM=1 -s EXIT_RUNTIME=0 -s EXPORTED_RUNTIME_METHODS=['FS','cwrap','ccall'] -O3"
 
-          # 通用编译打包函数
-          build_core() {
-            CORE_NAME=$1
-            CORE_DIR=$2
-            MAKEFILE_PATH=${3:-Makefile.libretro}
-            
-            echo "=========================================="
-            echo "Building Core: ${CORE_NAME}"
-            echo "=========================================="
-            
-            cd $GITHUB_WORKSPACE/cores-src/${CORE_DIR}
-            
-            # 清理旧编译结果
-            emmake make -f ${MAKEFILE_PATH} platform=emscripten clean || true
-            
-            # 编译静态库
-            emmake make -f ${MAKEFILE_PATH} platform=emscripten -j$(nproc)
-            
-            # 查找生成的 .bc 或 .a 库文件
-            LIB_FILE=$(find . -maxdepth 2 -type f \( -name "*_emscripten.bc" -o -name "*_emscripten.a" \) | head -n 1)
-            
-            if [ -z "$LIB_FILE" ]; then
-              echo "Error: Library file for ${CORE_NAME} not found!"
-              exit 1
-            fi
-            
-            # 将 .bc 重命名为 .a 避免 emcc/clang 误判文件格式
-            REAL_LIB="${LIB_FILE%.*}.a"
-            mv "$LIB_FILE" "$REAL_LIB"
-            
-            # 最终封装导出 JS + WASM
-            emcc "$REAL_LIB" -o $GITHUB_WORKSPACE/dist/cores/${CORE_NAME}_libretro_emscripten.js $EMCC_FLAGS
-            
-            echo "Successfully built ${CORE_NAME}"
-          }
+          # 1. 编译 FC (fceumm)
+          echo "================ Building FCEUmm ================"
+          cd $GITHUB_WORKSPACE/cores-src/fceumm
+          emmake make -f Makefile.libretro platform=emscripten -j$(nproc)
+          mv fceumm_libretro_emscripten.bc fceumm_libretro_emscripten.a
+          emcc fceumm_libretro_emscripten.a -o $GITHUB_WORKSPACE/dist/cores/fceumm_libretro_emscripten.js $EMCC_FLAGS
 
-          # 执行各个内核的编译
-          build_core "fceumm" "fceumm"
-          build_core "gambatte" "gambatte"
-          build_core "snes9x" "snes9x" "libretro/Makefile"
-          build_core "vbam" "vbam" "src/libretro/Makefile"
+          # 2. 编译 GB/GBC (gambatte)
+          echo "================ Building Gambatte ================"
+          cd $GITHUB_WORKSPACE/cores-src/gambatte
+          emmake make -f Makefile.libretro platform=emscripten -j$(nproc)
+          mv gambatte_libretro_emscripten.bc gambatte_libretro_emscripten.a
+          emcc gambatte_libretro_emscripten.a -o $GITHUB_WORKSPACE/dist/cores/gambatte_libretro_emscripten.js $EMCC_FLAGS
+
+          # 3. 编译 SFC (snes9x) -> 注意需要 cd 进入 libretro 目录
+          echo "================ Building Snes9x ================"
+          cd $GITHUB_WORKSPACE/cores-src/snes9x/libretro
+          emmake make -f Makefile platform=emscripten -j$(nproc)
+          mv snes9x_libretro_emscripten.bc snes9x_libretro_emscripten.a
+          emcc snes9x_libretro_emscripten.a -o $GITHUB_WORKSPACE/dist/cores/snes9x_libretro_emscripten.js $EMCC_FLAGS
+
+          # 4. 编译 GBA (vbam)
+          echo "================ Building VBA-M ================"
+          cd $GITHUB_WORKSPACE/cores-src/vbam/src/libretro
+          emmake make -f Makefile platform=emscripten -j$(nproc)
+          mv vbam_libretro_emscripten.bc vbam_libretro_emscripten.a
+          emcc vbam_libretro_emscripten.a -o $GITHUB_WORKSPACE/dist/cores/vbam_libretro_emscripten.js $EMCC_FLAGS
 
       # 6. 上传编译产物
       - name: Upload Cores Artifact
