@@ -1,36 +1,36 @@
 name: Compile RetroArch Web Player
 
 on:
-  workflow_dispatch: # 支持在 GitHub 页面上手动点击按钮触发编译
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. 安装宿主机依赖
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 1. 安装宿主机基础依赖
       - name: Install Build Dependencies
         run: |
           sudo apt update
-          sudo apt install -y build-essential git webp
+          sudo apt install -y build-essential git webp python3
 
-      # 2. 安装并配置 Emscripten SDK (WASM 编译器)
+      # 2. 部署并激活 Emscripten SDK
       - name: Setup Emscripten SDK
         run: |
           git clone --depth=1 https://github.com/emscripten-core/emsdk.git
           cd emsdk
           ./emsdk install latest
           ./emsdk activate latest
-          # 将 emsdk 路径写入环境变量，后续步骤均可直接使用 emcc/emmake
-          echo "$GITHUB_WORKSPACE/emsdk" >> $GITHUB_PATH
-          echo "$GITHUB_WORKSPACE/emsdk/upstream/emscripten" >> $GITHUB_PATH
 
-      # 3. 拉取 RetroArch 官方最新源码
+      # 3. 拉取 RetroArch 源码
       - name: Clone RetroArch Frontend
         run: |
           git clone --depth=1 https://github.com/libretro/RetroArch.git retroarch-src
 
-      # 4. 拉取四大最强 2D 模拟器内核最新源码
+      # 4. 拉取模拟器内核源码
       - name: Clone Cores Source
         run: |
           mkdir -p cores-src
@@ -39,75 +39,77 @@ jobs:
           git clone --depth=1 https://github.com/libretro/Genesis-Plus-GX.git cores-src/genesis
           git clone --depth=1 https://github.com/libretro/mgba.git cores-src/mgba
 
-      # 5. 拉取官方最新全套菜单资源 (Assets)
+      # 5. 拉取全套资源文件
       - name: Clone RetroArch Assets
         run: |
           git clone --depth=1 https://github.com/libretro/retroarch-assets.git assets-src
 
-      # 6. 编译 RetroArch 网页主程序
+      # 6. 编译 RetroArch Web 主程序
       - name: Build Web Frontend
         run: |
           source emsdk/emsdk_env.sh
-          cd $GITHUB_WORKSPACE/retroarch-src
+          cd retroarch-src
           emmake make -f Makefile.emscripten HAVE_STATIC_DUMMY=1 -j$(nproc)
 
-      # 7. 编译四大内核并打包为 WASM
+      # 7. 编译内核为 WASM 格式
       - name: Build Cores to WASM
         run: |
           source emsdk/emsdk_env.sh
+          mkdir -p dist/cores
           
-          # 创建统一输出目录
-          mkdir -p $GITHUB_WORKSPACE/dist/cores
-          
-          # 修正后的编译与打包参数
-          # 核心是增加了 -x assembler，用来让 emcc 正确识别和解包 Libretro 伪装成 .bc 的静态库
-          EMCC_FLAGS="-x assembler -s WASM=1 -s FORCE_FILESYSTEM=1 -s EXIT_RUNTIME=0 -s EXPORTED_RUNTIME_METHODS=['FS','cwrap','ccall'] -O3"
+          EMCC_FLAGS="-s WASM=1 -s FORCE_FILESYSTEM=1 -s EXIT_RUNTIME=0 -s EXPORTED_RUNTIME_METHODS=['FS','cwrap','ccall'] -O3"
 
-          echo "=== 编译 & 封装 FC (FCEUmm) ==="
+          echo "=== 编译 FC (FCEUmm) ==="
           cd $GITHUB_WORKSPACE/cores-src/fceumm
           emmake make -f Makefile.libretro platform=emscripten -j$(nproc)
-          emcc fceumm_libretro_emscripten.bc -o $GITHUB_WORKSPACE/dist/cores/fceumm.js $EMCC_FLAGS
-          
-          echo "=== 编译 & 封装 SFC (Snes9x) ==="
+          emcc fceumm_libretro_emscripten.bc -o $GITHUB_WORKSPACE/dist/cores/fceumm_libretro_emscripten.js $EMCC_FLAGS
+
+          echo "=== 编译 SFC (Snes9x) ==="
           cd $GITHUB_WORKSPACE/cores-src/snes9x/libretro
           emmake make platform=emscripten -j$(nproc)
-          emcc snes9x_libretro_emscripten.bc -o $GITHUB_WORKSPACE/dist/cores/snes9x.js $EMCC_FLAGS
-          
-          echo "=== 编译 & 封装 MD (Genesis Plus GX) ==="
+          emcc snes9x_libretro_emscripten.bc -o $GITHUB_WORKSPACE/dist/cores/snes9x_libretro_emscripten.js $EMCC_FLAGS
+
+          echo "=== 编译 MD (Genesis Plus GX) ==="
           cd $GITHUB_WORKSPACE/cores-src/genesis
           emmake make -f Makefile.libretro platform=emscripten -j$(nproc)
-          emcc genesis_plus_gx_libretro_emscripten.bc -o $GITHUB_WORKSPACE/dist/cores/genesis.js $EMCC_FLAGS
-          
-          echo "=== 编译 & 封装 GBA (mGBA) ==="
+          emcc genesis_plus_gx_libretro_emscripten.bc -o $GITHUB_WORKSPACE/dist/cores/genesis_plus_gx_libretro_emscripten.js $EMCC_FLAGS
+
+          echo "=== 编译 GBA (mGBA) ==="
           cd $GITHUB_WORKSPACE/cores-src/mgba
           emmake make -f Makefile.libretro platform=emscripten -j$(nproc)
-          emcc mgba_libretro_emscripten.bc -o $GITHUB_WORKSPACE/dist/cores/mgba.js $EMCC_FLAGS
+          emcc mgba_libretro_emscripten.bc -o $GITHUB_WORKSPACE/dist/cores/mgba_libretro_emscripten.js $EMCC_FLAGS
 
-          echo "=== 编译完成！所有内核已放入 dist/cores 目录 ==="
-
+      # 8. 整合打包文件
       - name: Prepare Artifact Directory
         run: |
           mkdir -p dist/assets
           
-          # 1. 核心修正：直接去你搜出来的 libretro 壳目录，把配套的 index.html、css 和外壳 js 一个不漏全带走
+          # 复制 web 壳文件
           cp retroarch-src/pkg/emscripten/libretro/index.html dist/
           cp retroarch-src/pkg/emscripten/libretro/libretro.css dist/
           cp retroarch-src/pkg/emscripten/libretro/libretro.js dist/
-          cp retroarch-src/pkg/emscripten/libretro/core_list.js dist/
           cp retroarch-src/pkg/emscripten/libretro/browserfs.min.js dist/
           
-          # 2. 复制你根目录下热乎编译出来的核心本体
+          # 复制主程序 WASM & JS
           cp retroarch-src/retroarch.js dist/
-          # 动态匹配你可能编译出的配套 .wasm 文件（有些配置下可能包含 worker.js，通配符最稳）
           cp retroarch-src/retroarch.wasm dist/ 2>/dev/null || true
-          cp retroarch-src/*.wasm dist/ 2>/dev/null || true
           
-          # 4. 拷贝最新的 Assets 资源文件夹（如果你的工作流有涉及）
-          # if [ -d "assets-src" ]; then cp -r assets-src/* dist/assets/ 2>/dev/null || true; fi
+          # 复制 Assets 静态资源
+          cp -r assets-src/* dist/assets/ 2>/dev/null || true
 
+          # 生成适配当前核心的 core_list.js
+          cat << 'EOF' > dist/core_list.js
+          var CORE_LIST = [
+            { name: "Nintendo - NES / FC (FCEUmm)", core_file: "cores/fceumm_libretro_emscripten.js" },
+            { name: "Nintendo - SNES / SFC (Snes9x)", core_file: "cores/snes9x_libretro_emscripten.js" },
+            { name: "Sega - Mega Drive / Genesis (Genesis Plus GX)", core_file: "cores/genesis_plus_gx_libretro_emscripten.js" },
+            { name: "Nintendo - Game Boy Advance (mGBA)", core_file: "cores/mgba_libretro_emscripten.js" }
+          ];
+          EOF
+
+      # 9. 压缩与上传
       - name: Compress Artifacts to tar.gz
         run: |
-          # -C dist . 表示切换到 dist 目录下再打包，这样解压时就不会包含多余的 dist 外层文件夹
           tar -czvf retroarch-web-player.tar.gz -C dist .
 
       - name: Upload Streamlined Tarball
